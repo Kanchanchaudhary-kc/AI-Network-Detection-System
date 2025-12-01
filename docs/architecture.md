@@ -83,3 +83,6 @@ D. GUI & Visualization
 - All detected events are stored
 
 - Helps in testing, debugging, and performance evaluation
+
+5. Reference to system architecture image
+![System Architecture](images/System_Architecture.png)
