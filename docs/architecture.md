@@ -84,54 +84,8 @@ D. GUI & Visualization
 
 - Helps in testing, debugging, and performance evaluation
 
-5. Reference to system architecture image
+5. System architecture 
 ![System Architecture](images/System_Architecture.png)
 
 6. Detailed pipeline
-                            ┌─────────────────────────────┐
-                            │       Dataset Phase         │
-                            └─────────────────────────────┘
-                                 CICIDS2017 / NSL-KDD
-                                      (raw data)
-                                          │
-                                          ▼
-                                Data Preprocessing (Python)
-                           - Cleaning, Encoding, Normalization
-                           - Feature Selection, Scaling
-                                          │
-                                          ▼
-                            ┌─────────────────────────────┐
-                            │   Model Training Phase      │
-                            └─────────────────────────────┘
-                        Algorithms Used:
-                        - Isolation Forest (unsupervised)
-                        - Random Forest (supervised)
-                        - SVM (supervised)
-                        - Logistic Regression (baseline)
-                                          │
-                                          ▼
-                              Best Model Selected + Saved
-                                        (.pkl file)
-                                          │
-                                          ▼
-            ┌───────────────────────────────────────────────────────────┐
-            │            REAL-TIME DETECTION PHASE                      │
-            └───────────────────────────────────────────────────────────┘
-                                      Wireshark
-                      (captures live packets from network interface) 
-                                          │
-                                          ▼
-                                       PyShark
-                      (interprets packet fields and extracts features)
-                                          │
-                                          ▼
-                                 Feature Formatting 
-                              (matches ML model format)
-                                          │
-                                          ▼
-                                      ML Model
-                     (predicts attack/anomaly/malware in real-time)
-                                          │
-                                          ▼
-                              GUI (Streamlit/Tkinter) 
-                      (displays alerts + logs suspicious activity)
+![Detailed Pipeline](images/Detailed_pipeline.png)                     
