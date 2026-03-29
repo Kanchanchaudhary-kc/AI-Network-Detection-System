@@ -19,3 +19,7 @@ datasets/feature_sets/
 # OS files
 .DS_Store
 Thumbs.db
+
+# ignore pcap files
+*.pcap
+realtime/realtime_capture.pcap
