@@ -1,6 +1,6 @@
-from realtime.realtime_capture import run_capture
-from realtime.feature_generation import run_feature_extraction
-from realtime.model_prediction import run_prediction
+from realtime_capture import run_capture
+from feature_generation import run_feature_extraction
+from model_prediction import run_prediction
 
 def main():
     # Step 1: Capture 120s of traffic
