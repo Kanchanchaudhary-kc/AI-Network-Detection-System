@@ -11,7 +11,6 @@ venv/
 datasets/raw/
 datasets/preprocessed/
 datasets/feature_sets/
-realtime/realtime_capture.pcap_Flow.csv
 
 # Logs and temp files
 *.log
@@ -24,3 +23,11 @@ Thumbs.db
 # ignore pcap files
 *.pcap
 realtime/realtime_capture.pcap
+
+#ignore large pkl file
+models/retrained/random_forest.pkl
+
+# ignore .csv files
+*.csv
+realtime/realtime_capture.pcap_Flow.csv
+*_Flow.csv
