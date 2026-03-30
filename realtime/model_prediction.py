@@ -3,15 +3,27 @@ import numpy as np
 import joblib
 import glob
 import os
+import csv # Added for efficient logging
+from datetime import datetime # Added for timestamps
 
 # ==============================
 # CONFIGURATION & MODEL LOADING
 # ==============================
-# Adjust paths as needed (e.g., os.path.join("..", "models", "scaler.pkl"))
 RF_MODEL = joblib.load("../models/retrained/random_forest.pkl")
 ISO_FOREST = joblib.load("../models/retrained/isolation_forest_model.pkl")
 SCALER = joblib.load("../models/scaler.pkl")
 LE = joblib.load("../models/label_encoder.pkl")
+
+# New Helper Function for Logging
+def save_logs(log_data, log_file="detection_history.csv"):
+    """Appends a single prediction row to the log CSV"""
+    file_exists = os.path.isfile(log_file)
+    with open(log_file, 'a', newline='') as f:
+        writer = csv.writer(f)
+        # Add header only if file is new
+        if not file_exists:
+            writer.writerow(['Timestamp', 'Source_IP', 'Dest_IP', 'Dest_Port', 'Protocol', 'Anomaly_Status', 'Classification'])
+        writer.writerow(log_data)
 
 def rename_live_columns(df):
     """Bridges the gap between live CICFlowMeter names and Training names"""
@@ -42,44 +54,32 @@ def rename_live_columns(df):
 
 def preprocess_live_data(df):
     """Cleans numeric data and handles infinity/NaNs"""
-    # 1. Identify non-numeric metadata
     non_features = [
         'Flow ID', 'Source IP', 'Source Port', 'Destination IP', 
         'Destination Port', 'Protocol', 'Timestamp', 'Label',
-        'Src IP', 'Src Port', 'Dst IP', 'Dst Port' # Catch live variants
+        'Src IP', 'Src Port', 'Dst IP', 'Dst Port'
     ]
-    
-    # 2. Drop metadata
     X = df.drop(columns=[c for c in non_features if c in df.columns], errors='ignore')
-    
-    # 3. Force numeric only (Removes IPs)
     X = X.select_dtypes(include=[np.number])
-    
-    # 4. Handle math errors
     X = X.replace([np.inf, -np.inf], np.nan)
     X = X.fillna(0) 
     return X
 
 def run_prediction():
-    # 1. Find latest CSV
     csv_files = glob.glob(os.path.join(".", "*_Flow.csv"), recursive=True)
     if not csv_files: 
         print("No traffic data found.")
         return
     latest_csv = max(csv_files, key=os.path.getctime)
     
-    # 2. Load Data
     df_raw = pd.read_csv(latest_csv)
-    
-    # 3. Rename and Add Duplicate Column (Required by Training Set)
     df_renamed = rename_live_columns(df_raw)
+    
     if 'Fwd Header Length' in df_renamed.columns:
         df_renamed['Fwd Header Length.1'] = df_renamed['Fwd Header Length']
 
-    # 4. Basic Cleaning
     X_features = preprocess_live_data(df_renamed)
 
-    # 5. Define Training Columns Order
     train_cols = [
         'Destination Port', 'Flow Duration', 'Total Fwd Packets',
         'Total Backward Packets', 'Total Length of Fwd Packets',
@@ -108,32 +108,45 @@ def run_prediction():
         'Idle Std', 'Idle Max', 'Idle Min'
     ]
 
-    # 6. Final Alignment (Fixes the KeyError)
-    # Ensure any completely missing columns are added as 0
     for col in train_cols:
         if col not in X_features.columns:
             X_features[col] = 0
 
-    X_final = X_features[train_cols] # Force correct order
+    X_final = X_features[train_cols]
     X_input = X_final.copy()
     X_input.columns = [str(i) for i in range (len(X_input.columns))]
 
-
-    # 7. Scale and Predict
     X_scaled = SCALER.transform(X_input)
     is_anomaly = ISO_FOREST.predict(X_scaled)
     numeric_preds = RF_MODEL.predict(X_scaled)
 
-    # 8. Hybrid Report
     print(f"\n--- HYBRID IDS REPORT: {os.path.basename(latest_csv)} ---")
+    
     for i in range(len(X_scaled)):
-        # Translate number back to text label
         text_label = LE.inverse_transform([numeric_preds[i]])[0]
+        status = "Anomaly" if is_anomaly[i] == -1 else "Normal"
         
-        # -1 = Anomaly, 1 = Normal
-        status = "[!] anomaly" if is_anomaly[i] == -1 else "[✓] normal"
+        # --- LOGGING LOGIC START ---
+        # Extract metadata for the log (using raw df indices)
+        src_ip = df_raw.iloc[i].get('Src IP', 'N/A')
+        dst_ip = df_raw.iloc[i].get('Dst IP', 'N/A')
+        dst_port = df_raw.iloc[i].get('Dst Port', 'N/A')
+        proto = df_raw.iloc[i].get('Protocol', 'N/A')
         
-        print(f"FLOW {i+1}: {status} , Classification: {text_label}")
+        log_entry = [
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            src_ip, dst_ip, dst_port, proto, status, text_label
+        ]
+        save_logs(log_entry)
+        # --- LOGGING LOGIC END ---
+
+        if status == "Anomaly":
+            display_status = f"[!] {status}"
+        else:
+            display_status = f"[✓] {status}"
+            
+        print(f"FLOW {i+1}: {display_status} , Classification: {text_label}")
 
 if __name__ == "__main__":
     run_prediction()
+
