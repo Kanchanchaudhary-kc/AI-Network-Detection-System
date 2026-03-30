@@ -1,6 +1,7 @@
 import customtkinter as ctk
 import pandas as pd
 import os
+import csv
 
 # SETTINGS: Path to your realtime logs
 LOG_DIR = os.path.join("..", "realtime") 
@@ -24,19 +25,30 @@ class IDSDashboard(ctk.CTk):
         self.sidebar = ctk.CTkFrame(self, width=200, corner_radius=0)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         
+        # Header Label (Moved above the button for better look)
         ctk.CTkLabel(self.sidebar, text="IDS MONITOR", font=("Impact", 24)).pack(pady=20)
 
-        # Stats
+        # Stats Cards
         self.total_lbl = self.create_card("TOTAL FLOWS", "0", "#008000")
         self.alert_lbl = self.create_card("ATTACKS", "0", "#FF5555")
         self.anomaly_lbl = self.create_card("SUSPICIOUS (ISO)", "0", "#FFBB33")
 
-        # Main View
+        # Reset Button (Placed at the bottom of sidebar)
+        self.reset_btn = ctk.CTkButton(
+            self.sidebar, 
+            text="RESET SESSION", 
+            fg_color="#444444", 
+            hover_color="#AA3333", 
+            command=self.reset_system_logs
+        )
+        self.reset_btn.pack(side="bottom", pady=20)
+
+        # Main View / Tabs
         self.tabs = ctk.CTkTabview(self)
         self.tabs.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
         self.tabs.add("Live Alerts")
-        self.tabs.add("Full History")
         self.tabs.add("Suspicious (ISO)")
+        self.tabs.add("Full History")
 
         self.alert_box = ctk.CTkTextbox(self.tabs.tab("Live Alerts"), font=("Consolas", 12))
         self.alert_box.pack(fill="both", expand=True)
@@ -59,14 +71,12 @@ class IDSDashboard(ctk.CTk):
 
     def update_loop(self):
         try:
-            # 1. Update Total Flows & History
             if os.path.exists(ALL_LOGS):
                 df = pd.read_csv(ALL_LOGS)
                 self.total_lbl.configure(text=str(len(df)))
                 self.history_box.delete("1.0", "end")
                 self.history_box.insert("end", df.tail(15).to_string(index=False))
 
-            # 2. Update Alerts
             if os.path.exists(ALERT_LOGS):
                 df_a = pd.read_csv(ALERT_LOGS)
                 self.alert_lbl.configure(text=str(len(df_a)))
@@ -74,7 +84,6 @@ class IDSDashboard(ctk.CTk):
                 self.alert_box.insert("end", "!!! ATTACK LOGS !!!\n\n")
                 self.alert_box.insert("end", df_a.tail(10).to_string(index=False))
 
-            # 3. Update Anomaly Logs (Isolation Forest)
             if os.path.exists(ANOMALY_LOGS):
                 df_iso = pd.read_csv(ANOMALY_LOGS)
                 self.anomaly_lbl.configure(text=str(len(df_iso)))
@@ -83,9 +92,22 @@ class IDSDashboard(ctk.CTk):
                 self.anomaly_box.insert("end", df_iso.tail(10).to_string(index=False))
 
         except Exception as e:
-            print(f"Syncing for logs... {e}")
+            print(f"Syncing logs... {e}")
 
         self.after(2000, self.update_loop)
+
+    # FIXED: Moved outside of update_loop and fixed indentation
+    def reset_system_logs(self):
+        files = [ALL_LOGS, ALERT_LOGS, ANOMALY_LOGS]
+        header = ['Timestamp', 'Source_IP', 'Dest_IP', 'Dest_Port', 'Protocol', 'Classification']
+        
+        for file_path in files:
+            if os.path.exists(file_path):
+                with open(file_path, 'w', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(header)
+        
+        print("Logs have been cleared for a new session.")
 
 if __name__ == "__main__":
     app = IDSDashboard()
