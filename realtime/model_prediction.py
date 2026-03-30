@@ -15,7 +15,7 @@ SCALER = joblib.load("../models/scaler.pkl")
 LE = joblib.load("../models/label_encoder.pkl")
 
 # New Helper Function for Logging
-def save_logs(log_data, log_file="detection_history.csv"):
+def save_logs(log_data, log_file):
     """Appends a single prediction row to the log CSV"""
     file_exists = os.path.isfile(log_file)
     with open(log_file, 'a', newline='') as f:
@@ -122,12 +122,14 @@ def run_prediction():
 
     print(f"\n--- HYBRID IDS REPORT: {os.path.basename(latest_csv)} ---")
     
+
     for i in range(len(X_scaled)):
+        # 1. Get raw values
         text_label = LE.inverse_transform([numeric_preds[i]])[0]
-        status = "Anomaly" if is_anomaly[i] == -1 else "Normal"
-        
-        # --- LOGGING LOGIC START ---
-        # Extract metadata for the log (using raw df indices)
+        is_iso_anomaly = (is_anomaly[i] == -1)
+        is_rf_attack = (text_label != "BENIGN") # Adjust "BENIGN" to match your LabelEncoder exactly
+
+        # 2. Extract metadata for logs
         src_ip = df_raw.iloc[i].get('Src IP', 'N/A')
         dst_ip = df_raw.iloc[i].get('Dst IP', 'N/A')
         dst_port = df_raw.iloc[i].get('Dst Port', 'N/A')
@@ -135,11 +137,29 @@ def run_prediction():
         
         log_entry = [
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            src_ip, dst_ip, dst_port, proto, status, text_label
+            src_ip, dst_ip, dst_port, proto, 
+            "Anomaly" if is_iso_anomaly else "Normal", 
+            text_label
         ]
-        save_logs(log_entry)
-        # --- LOGGING LOGIC END ---
 
+        # 3. ROUTING LOGIC
+        
+        # ALWAYS save to all_logs.csv
+        save_logs(log_entry, "all_logs.csv")
+
+        # ALERT LOGIC: If RF says Attack (regardless of ISO) OR both agree
+        if is_rf_attack:
+            save_logs(log_entry, "alerts.csv")
+            print(f"\033[91m [!!!] ALERT: {text_label} detected from {src_ip} \033[0m")
+            # This 'alerts.csv' is what your GUI will watch for pop-ups
+        
+        # ANOMALY LOGIC: If ONLY Isolation Forest caught it, but RF thought it was Benign
+        elif is_iso_anomaly and not is_rf_attack:
+            save_logs(log_entry, "anomaly_logs.csv")
+            print(f"\033[93m [?] SUSPICIOUS: Outlier detected (ISO Forest) from {src_ip} \033[0m")
+
+
+        status = "Anomaly" if is_anomaly[i] == -1 else "Normal"
         if status == "Anomaly":
             display_status = f"[!] {status}"
         else:
