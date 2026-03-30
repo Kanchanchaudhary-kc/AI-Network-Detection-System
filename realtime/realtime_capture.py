@@ -5,7 +5,7 @@ import os
 # CONFIGURATION
 INTERFACE = "Wi-Fi 3"
 DURATION = 120
-OUTPUT_FILE = "realtime/realtime_capture.pcap" # Keeping it in the realtime folder
+OUTPUT_FILE = "realtime_capture.pcap" # Keeping it in the realtime folder
 
 def run_capture():
     print(f"[{datetime.now()}] Starting packet capture on {INTERFACE}...")
