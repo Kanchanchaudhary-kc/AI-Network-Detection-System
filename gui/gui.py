@@ -99,7 +99,7 @@ class IDSDashboard(ctk.CTk):
     # FIXED: Moved outside of update_loop and fixed indentation
     def reset_system_logs(self):
         files = [ALL_LOGS, ALERT_LOGS, ANOMALY_LOGS]
-        header = ['Timestamp', 'Source_IP', 'Dest_IP', 'Dest_Port', 'Protocol', 'Classification']
+        header = ['Timestamp', 'Source_IP', 'Dest_IP', 'Dest_Port', 'Protocol', 'Anomaly_Status','Classification']
         
         for file_path in files:
             if os.path.exists(file_path):
