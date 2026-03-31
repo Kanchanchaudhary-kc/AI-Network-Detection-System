@@ -71,25 +71,32 @@ class IDSDashboard(ctk.CTk):
 
     def update_loop(self):
         try:
+            pd.set_option('display.max_colwidth', None)
+            pd.set_option('display.width', 1000)
+
+            if os.path.exists(ALL_LOGS):
+                df = pd.read_csv(ALL_LOGS)
+
             if os.path.exists(ALL_LOGS):
                 df = pd.read_csv(ALL_LOGS)
                 self.total_lbl.configure(text=str(len(df)))
                 self.history_box.delete("1.0", "end")
-                self.history_box.insert("end", df.tail(15).to_string(index=False))
+                self.history_box.insert("end", df.tail(100).to_string(index=False))
+                self.history_box.see("end")
 
             if os.path.exists(ALERT_LOGS):
                 df_a = pd.read_csv(ALERT_LOGS)
                 self.alert_lbl.configure(text=str(len(df_a)))
                 self.alert_box.delete("1.0", "end")
                 self.alert_box.insert("end", "!!! ATTACK LOGS !!!\n\n")
-                self.alert_box.insert("end", df_a.tail(10).to_string(index=False))
+                self.alert_box.insert("end", df_a.tail(50).to_string(index=False))
 
             if os.path.exists(ANOMALY_LOGS):
                 df_iso = pd.read_csv(ANOMALY_LOGS)
                 self.anomaly_lbl.configure(text=str(len(df_iso)))
                 self.anomaly_box.delete("1.0", "end")
                 self.anomaly_box.insert("end", "??? SUSPICIOUS ACTIVITY (ISO FOREST) ???\n\n")
-                self.anomaly_box.insert("end", df_iso.tail(10).to_string(index=False))
+                self.anomaly_box.insert("end", df_iso.tail(50).to_string(index=False))
 
         except Exception as e:
             print(f"Syncing logs... {e}")
